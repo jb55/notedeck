@@ -56,7 +56,7 @@ impl notedeck::App for Notebook {
 
         egui::Scene::new().show(ui, &mut self.scene_rect, |ui| {
             // render nodes
-            for (_node_id, node) in self.canvas.get_nodes().iter() {
+            for (_node_id, node) in self.canvas.get_mut_nodes().iter_mut() {
                 let _resp = node_ui(&mut rng, &mut note_context, ui, node);
             }
 

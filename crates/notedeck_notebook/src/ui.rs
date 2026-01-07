@@ -1,4 +1,4 @@
-use egui::{Align, Label, Pos2, Rect, Shape, Stroke, TextWrapMode, epaint::CubicBezierShape, vec2};
+use egui::{Align, Pos2, Rect, Shape, Stroke, epaint::CubicBezierShape, vec2};
 use jsoncanvas::{
     FileNode, GroupNode, LinkNode, Node, NodeId, TextNode,
     edge::{Edge, Side},
@@ -132,7 +132,7 @@ pub fn node_ui(
     rng: impl Rng,
     ctx: &mut NoteContext<'_>,
     ui: &mut egui::Ui,
-    node: &Node,
+    node: &mut Node,
 ) -> egui::Response {
     match node {
         Node::Text(text_node) => text_node_ui(rng, ctx, ui, text_node),
@@ -146,9 +146,9 @@ fn text_node_ui(
     mut rng: impl Rng,
     ctx: &mut NoteContext<'_>,
     ui: &mut egui::Ui,
-    node: &TextNode,
+    node: &mut TextNode,
 ) -> egui::Response {
-    node_box_ui(ui, node.node(), |ui| {
+    node_box_ui(ui, node.node_mut(), |ui| {
         egui::ScrollArea::vertical()
             .show(ui, |ui| {
                 ui.with_layout(egui::Layout::left_to_right(Align::Min), |ui| {
@@ -172,27 +172,27 @@ fn text_node_ui(
     })
 }
 
-fn file_node_ui(ui: &mut egui::Ui, node: &FileNode) -> egui::Response {
-    node_box_ui(ui, node.node(), |ui| ui.label("file node"))
+fn file_node_ui(ui: &mut egui::Ui, node: &mut FileNode) -> egui::Response {
+    node_box_ui(ui, node.node_mut(), |ui| ui.label("file node"))
 }
 
-fn link_node_ui(ui: &mut egui::Ui, node: &LinkNode) -> egui::Response {
-    node_box_ui(ui, node.node(), |ui| ui.label("link node"))
+fn link_node_ui(ui: &mut egui::Ui, node: &mut LinkNode) -> egui::Response {
+    node_box_ui(ui, node.node_mut(), |ui| ui.label("link node"))
 }
 
-fn group_node_ui(ui: &mut egui::Ui, node: &GroupNode) -> egui::Response {
-    node_box_ui(ui, node.node(), |ui| ui.label("group node"))
+fn group_node_ui(ui: &mut egui::Ui, node: &mut GroupNode) -> egui::Response {
+    node_box_ui(ui, node.node_mut(), |ui| ui.label("group node"))
 }
 
 fn node_box_ui(
     ui: &mut egui::Ui,
-    node: &GenericNode,
+    node: &mut GenericNode,
     contents: impl FnOnce(&mut egui::Ui) -> egui::Response,
 ) -> egui::Response {
     let pos = node_rect(node);
 
     ui.put(pos, |ui: &mut egui::Ui| {
-        egui::Frame::default()
+        let r = egui::Frame::default()
             .fill(ui.visuals().noninteractive().weak_bg_fill)
             .inner_margin(egui::Margin::same(16))
             .corner_radius(egui::CornerRadius::same(10))
@@ -200,11 +200,13 @@ fn node_box_ui(
                 2.0,
                 ui.visuals().noninteractive().bg_stroke.color,
             ))
-            .show(ui, |ui| {
-                let rect = ui.available_rect_before_wrap();
-                ui.allocate_at_least(ui.available_size(), egui::Sense::click());
-                ui.put(rect, contents);
-            })
-            .response
+            .show(ui, |ui| contents(ui))
+            .response;
+
+        // update the size of the node based on the rendered response size
+        node.width = r.rect.width() as u64;
+        node.height = r.rect.height() as u64;
+
+        r
     })
 }

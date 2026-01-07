@@ -3187,7 +3187,7 @@ dependencies = [
 [[package]]
 name = "jsoncanvas"
 version = "0.1.6"
-source = "git+https://github.com/jb55/jsoncanvas?rev=ae60f96e4d022cf037e086b793cacc3225bc14e5#ae60f96e4d022cf037e086b793cacc3225bc14e5"
+source = "git+https://github.com/jb55/jsoncanvas?rev=37a398c4ad42640bd89cd933cf3d6f4c37e9194b#37a398c4ad42640bd89cd933cf3d6f4c37e9194b"
 dependencies = [
  "hex_color",
  "serde",

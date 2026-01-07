@@ -107,7 +107,7 @@ the device ...
 */
 
 fn get_app_args() -> Vec<String> {
-    vec!["argv0-placeholder".to_string()]
+    vec!["argv0-placeholder".to_string(), "--notebook".to_string()]
     /*
     use serde_json::value;
     use std::fs;
