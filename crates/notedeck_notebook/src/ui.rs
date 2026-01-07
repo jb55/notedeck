@@ -4,6 +4,10 @@ use jsoncanvas::{
     edge::{Edge, Side},
     node::GenericNode,
 };
+use nostrdb::{NoteKey, Transaction};
+use notedeck::NoteContext;
+use notedeck_ui::NoteOptions;
+use rand::Rng;
 use std::collections::HashMap;
 use std::ops::Neg;
 
@@ -124,21 +128,43 @@ pub fn arrow_ui(ui: &mut egui::Ui, side: &Side, point: Pos2, fill: egui::Color32
     ));
 }
 
-pub fn node_ui(ui: &mut egui::Ui, node: &Node) -> egui::Response {
+pub fn node_ui(
+    rng: impl Rng,
+    ctx: &mut NoteContext<'_>,
+    ui: &mut egui::Ui,
+    node: &Node,
+) -> egui::Response {
     match node {
-        Node::Text(text_node) => text_node_ui(ui, text_node),
+        Node::Text(text_node) => text_node_ui(rng, ctx, ui, text_node),
         Node::File(file_node) => file_node_ui(ui, file_node),
         Node::Link(link_node) => link_node_ui(ui, link_node),
         Node::Group(group_node) => group_node_ui(ui, group_node),
     }
 }
 
-fn text_node_ui(ui: &mut egui::Ui, node: &TextNode) -> egui::Response {
+fn text_node_ui(
+    mut rng: impl Rng,
+    ctx: &mut NoteContext<'_>,
+    ui: &mut egui::Ui,
+    node: &TextNode,
+) -> egui::Response {
     node_box_ui(ui, node.node(), |ui| {
         egui::ScrollArea::vertical()
             .show(ui, |ui| {
                 ui.with_layout(egui::Layout::left_to_right(Align::Min), |ui| {
-                    ui.add(Label::new(node.text()).wrap_mode(TextWrapMode::Wrap))
+                    let txn = Transaction::new(ctx.ndb).unwrap();
+                    let note_key: u64 = rng.random_range(100..=1000);
+
+                    let Ok(note) = ctx.ndb.get_note_by_key(&txn, NoteKey::new(note_key)) else {
+                        return;
+                    };
+
+                    let mut options = NoteOptions::default();
+                    options.set(NoteOptions::Truncate, false);
+                    options.set(NoteOptions::TrustMedia, true);
+
+                    notedeck_ui::NoteView::new(ctx, &note, options).show(ui);
+                    //ui.add(Label::new(node.text()).wrap_mode(TextWrapMode::Wrap))
                 })
             })
             .inner

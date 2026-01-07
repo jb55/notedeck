@@ -28,7 +28,8 @@ impl Default for Notebook {
 }
 
 impl notedeck::App for Notebook {
-    fn update(&mut self, _ctx: &mut AppContext<'_>, ui: &mut egui::Ui) -> AppResponse {
+    fn update(&mut self, ctx: &mut AppContext<'_>, ui: &mut egui::Ui) -> AppResponse {
+        use rand::SeedableRng;
         //let app_action: Option<AppAction> = None;
 
         if !self.loaded {
@@ -36,10 +37,27 @@ impl notedeck::App for Notebook {
             self.loaded = true;
         }
 
+        // TODO(jb55): make this less horrible
+        let mut note_context = notedeck::NoteContext {
+            ndb: ctx.ndb,
+            accounts: ctx.accounts,
+            img_cache: ctx.img_cache,
+            note_cache: ctx.note_cache,
+            zaps: ctx.zaps,
+            pool: ctx.pool,
+            jobs: ctx.media_jobs.sender(),
+            unknown_ids: ctx.unknown_ids,
+            clipboard: ctx.clipboard,
+            i18n: ctx.i18n,
+            global_wallet: ctx.global_wallet,
+        };
+
+        let mut rng = rand::rngs::SmallRng::seed_from_u64(4);
+
         egui::Scene::new().show(ui, &mut self.scene_rect, |ui| {
             // render nodes
             for (_node_id, node) in self.canvas.get_nodes().iter() {
-                let _resp = node_ui(ui, node);
+                let _resp = node_ui(&mut rng, &mut note_context, ui, node);
             }
 
             // render edges
