@@ -156,19 +156,25 @@ fn text_node_ui(
                     let note_key: u64 = rng.random_range(100..=1000);
 
                     let Ok(note) = ctx.ndb.get_note_by_key(&txn, NoteKey::new(note_key)) else {
-                        return;
+                        return ui.interact(
+                            Rect::ZERO,
+                            egui::Id::new("dummy"),
+                            egui::Sense::hover(),
+                        );
                     };
 
                     let mut options = NoteOptions::default();
                     options.set(NoteOptions::Truncate, false);
                     options.set(NoteOptions::TrustMedia, true);
 
-                    notedeck_ui::NoteView::new(ctx, &note, options).show(ui);
-                    //ui.add(Label::new(node.text()).wrap_mode(TextWrapMode::Wrap))
+                    notedeck_ui::NoteView::new(ctx, &note, options)
+                        .sense(egui::Sense::drag())
+                        .show(ui)
+                        .response
                 })
+                .inner
             })
             .inner
-            .response
     })
 }
 
@@ -191,6 +197,15 @@ fn node_box_ui(
 ) -> egui::Response {
     let pos = node_rect(node);
 
+    /*
+    ui.painter().rect_stroke(
+        pos,
+        1.0,
+        egui::Stroke::new(2.0, egui::Color32::RED),
+        egui::StrokeKind::Middle,
+    );
+    */
+
     ui.put(pos, |ui: &mut egui::Ui| {
         let r = egui::Frame::default()
             .fill(ui.visuals().noninteractive().weak_bg_fill)
@@ -200,13 +215,33 @@ fn node_box_ui(
                 2.0,
                 ui.visuals().noninteractive().bg_stroke.color,
             ))
-            .show(ui, |ui| contents(ui))
-            .response;
+            .show(ui, |ui| {
+                /*
+                let size_id = egui::Id::new((&node.id, "size"));
+                if let Some(rect) = ui.data(|d| d.get_temp::<Rect>(size_id)) {
+                    let put_at = Rect::from_min_size(rect.min, rect.size());
+                    let r = ui.allocate_rect(put_at, egui::Sense::drag());
+                    ui.put(put_at, contents);
+                    r
+                } else {
+                    let r = contents(ui);
+                    ui.data_mut(|d| d.insert_temp(size_id, r.rect));
+                    r
+                }
+                */
+                contents(ui)
+            });
 
-        // update the size of the node based on the rendered response size
-        node.width = r.rect.width() as u64;
-        node.height = r.rect.height() as u64;
+        if r.inner.dragged() {
+            tracing::debug!("node {} was dragged {}", node.id, r.inner.drag_delta());
+            let delta = r.inner.drag_delta();
+            node.x += delta.x as i64;
+            node.y += delta.y as i64;
+        }
 
-        r
+        node.width = r.response.rect.width() as u64;
+        node.height = r.response.rect.height() as u64;
+
+        r.response
     })
 }

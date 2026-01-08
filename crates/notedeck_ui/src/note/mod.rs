@@ -34,6 +34,7 @@ pub struct NoteView<'a, 'd> {
     parent: Option<NoteKey>,
     note: &'a nostrdb::Note<'a>,
     flags: NoteOptions,
+    sense: egui::Sense,
 }
 
 pub struct NoteResponse {
@@ -89,6 +90,7 @@ impl<'a, 'd> NoteView<'a, 'd> {
             parent,
             note,
             flags,
+            sense: Sense::click(),
         }
     }
 
@@ -202,6 +204,12 @@ impl<'a, 'd> NoteView<'a, 'd> {
     #[inline]
     pub fn options_mut(&mut self) -> &mut NoteOptions {
         &mut self.flags
+    }
+
+    #[inline]
+    pub fn sense(mut self, sense: egui::Sense) -> Self {
+        self.sense = sense;
+        self
     }
 
     #[inline]
@@ -620,7 +628,7 @@ impl<'a, 'd> NoteView<'a, 'd> {
             .get_profile_by_pubkey(txn, self.note.pubkey());
 
         let hitbox_id = note_hitbox_id(note_key, self.options(), self.parent);
-        let maybe_hitbox = maybe_note_hitbox(ui, hitbox_id);
+        let maybe_hitbox = maybe_note_hitbox(ui, hitbox_id, self.sense);
 
         // wide design
         let response = if self.options().contains(NoteOptions::Wide) {
@@ -647,11 +655,13 @@ impl<'a, 'd> NoteView<'a, 'd> {
             }
         }
 
-        note_action = note_hitbox_clicked(ui, hitbox_id, &response.response.rect, maybe_hitbox)
-            .then_some(NoteAction::note(NoteId::new(*self.note.id())))
-            .or(note_action);
+        note_action =
+            note_hitbox_clicked(ui, hitbox_id, &response.response.rect, maybe_hitbox.clone())
+                .then_some(NoteAction::note(NoteId::new(*self.note.id())))
+                .or(note_action);
 
-        let mut resp = NoteResponse::new(response.response).with_action(note_action);
+        let mut resp =
+            NoteResponse::new(maybe_hitbox.unwrap_or(response.response)).with_action(note_action);
         if let Some(pfp_rect) = note_ui_resp.pfp_rect {
             resp = resp.with_pfp(pfp_rect);
         }
@@ -791,7 +801,11 @@ fn note_hitbox_id(
     Id::new(("note_size", note_key, note_options, parent))
 }
 
-fn maybe_note_hitbox(ui: &mut egui::Ui, hitbox_id: egui::Id) -> Option<Response> {
+fn maybe_note_hitbox(
+    ui: &mut egui::Ui,
+    hitbox_id: egui::Id,
+    sense: egui::Sense,
+) -> Option<Response> {
     ui.ctx()
         .data_mut(|d| d.get_temp(hitbox_id))
         .map(|note_size: Vec2| {
@@ -803,7 +817,7 @@ fn maybe_note_hitbox(ui: &mut egui::Ui, hitbox_id: egui::Id) -> Option<Response>
                 max: pos2(container_rect.max.x, container_rect.min.y + note_size.y),
             };
 
-            let response = ui.interact(rect, ui.id().with(hitbox_id), egui::Sense::click());
+            let response = ui.interact(rect, ui.id().with(hitbox_id), sense);
 
             response
                 .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Other, true, "hitbox"));
